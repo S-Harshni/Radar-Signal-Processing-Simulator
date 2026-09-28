@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radar Signal Processing Simulator</title>
+<meta name="description" content="Interactive pulse-Doppler radar simulator: LFM pulse compression, range-Doppler processing, Swerling targets and CA-CFAR detection.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f6f7fb; --surface:#fff; --border:#e2e7ef; --text:#0f1b2d; --text-2:#4a5567; --muted:#6f7c90;
+  --accent:#0e7490; --accent-2:#2563eb; --grid:rgba(15,27,45,.08);
+  --s1:#2563eb; --s2:#e11d48; --truth:#f59e0b;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#0a0f1a; --surface:#111827; --border:#1f2a3f; --text:#e8eef9; --text-2:#aab6ca; --muted:#8190a8;
+    --accent:#22d3ee; --accent-2:#60a5fa; --grid:rgba(255,255,255,.07); --s1:#60a5fa; --s2:#fb7185; --truth:#fbbf24;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#0a0f1a; --surface:#111827; --border:#1f2a3f; --text:#e8eef9; --text-2:#aab6ca; --muted:#8190a8;
+  --accent:#22d3ee; --accent-2:#60a5fa; --grid:rgba(255,255,255,.07); --s1:#60a5fa; --s2:#fb7185; --truth:#fbbf24;
+  color-scheme: dark;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.55; -webkit-font-smoothing:antialiased; }
+a { color:var(--accent-2); }
+.wrap { max-width:1200px; margin:0 auto; padding:0 20px; }
+header { padding:28px 0 18px; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.kicker { font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--accent); letter-spacing:.06em; }
+h1 { font-family:"Space Grotesk",sans-serif; font-size:clamp(26px,4vw,38px); letter-spacing:-.02em; margin:6px 0; }
+.sub { color:var(--text-2); max-width:820px; }
+.links { margin-top:10px; display:flex; gap:14px; flex-wrap:wrap; font-size:14px; font-weight:600; }
+.layout { display:grid; grid-template-columns:300px 1fr; gap:18px; align-items:start; }
+.panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; }
+.panel h2 { font-size:13px; font-family:"JetBrains Mono",monospace; color:var(--accent); text-transform:uppercase; letter-spacing:.06em; margin:4px 0 10px; }
+label { display:grid; grid-template-columns:1fr auto; gap:4px 8px; font-size:13px; color:var(--text-2); margin-bottom:10px; }
+label output { font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--text); }
+label input[type=range] { grid-column:1/-1; width:100%; accent-color:var(--accent); }
+select, input[type=number] { font:inherit; font-size:13px; padding:4px 6px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); width:100%; }
+.tg { display:grid; grid-template-columns:repeat(4,1fr) 22px; gap:4px; align-items:center; margin-bottom:6px; }
+.tg.head { font-size:11px; color:var(--muted); }
+.tg button, .btn { font:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); }
+.tg button { height:26px; }
+.btn { padding:8px 12px; font-weight:600; font-size:13px; width:100%; margin-top:6px; }
+.btn.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+:root[data-theme="dark"] .btn.primary { color:#04212a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.primary { color:#04212a; } }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:14px; }
+.stat { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; }
+.stat b { font-family:"Space Grotesk",sans-serif; font-size:20px; display:block; }
+.stat span { font-size:12px; color:var(--muted); }
+.plots { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.plot { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:12px 12px 6px; }
+.plot.full { grid-column:1/-1; }
+.plot h3 { font-size:14px; margin-bottom:2px; }
+.plot p { font-size:12px; color:var(--muted); margin-bottom:6px; }
+canvas { width:100%; height:230px; display:block; }
+.plot.full canvas { height:320px; }
+.legend { display:flex; gap:14px; font-size:12px; color:var(--text-2); margin:4px 0 6px; flex-wrap:wrap; }
+.legend i { display:inline-block; width:14px; height:3px; border-radius:2px; vertical-align:middle; margin-right:5px; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th, td { white-space:nowrap; text-align:right; padding:6px 8px; border-bottom:1px solid var(--border); font-variant-numeric:tabular-nums; }
+th:first-child, td:first-child { text-align:left; }
+th { color:var(--muted); font-weight:500; font-size:12px; }
+.ok { color:#16a34a; } .fa { color:var(--muted); }
+footer { color:var(--muted); font-size:12px; text-align:center; padding:28px 0; }
+.note { font-size:12px; color:var(--muted); margin-top:8px; }
+@media (max-width:900px) { .layout { grid-template-columns:1fr; } .plots { grid-template-columns:1fr; } }
+</style>
+<script>try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">RADAR · DSP · C++ / MATLAB / JS</div>
+    <h1>Radar Signal Processing Simulator</h1>
+    <p class="sub">A pulse-Doppler radar chain that runs in your browser. It builds an LFM chirp, simulates echoes from Swerling targets, applies matched-filter pulse compression, runs the Doppler FFT, and detects targets with 2-D CA-CFAR. The same algorithms are in the tested C++17 library and the MATLAB script in the repo.</p>
+    <div class="links">
+      <a href="https://github.com/S-Harshni/Radar-Signal-Processing-Simulator">Source code</a>
+      <a href="https://s-harshni.github.io/S-Harshni/">S Harshni · Portfolio</a>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="panel">
+      <h2>Targets</h2>
+      <div class="tg head"><span>Range (m)</span><span>Vel (m/s)</span><span>RCS (m²)</span><span>Swerling</span><span></span></div>
+      <div id="targets"></div>
+      <button class="btn" id="add">+ Add target</button>
+
+      <h2 style="margin-top:18px">Radar</h2>
+      <label>Chirp bandwidth B <output id="o-bw"></output><input type="range" id="bw" min="2" max="10" step="1" value="10"></label>
+      <label>Pulse width T <output id="o-pw"></output><input type="range" id="pw" min="2" max="20" step="1" value="10"></label>
+      <label>Pulses per CPI <output id="o-np"></output><input type="range" id="np" min="4" max="7" step="1" value="6"></label>
+      <label>Ref. single-pulse SNR (1 m² @ 5 km) <output id="o-snr"></output><input type="range" id="snr" min="-25" max="10" step="1" value="-10"></label>
+      <label>CFAR false-alarm prob. <output id="o-pfa"></output><input type="range" id="pfa" min="3" max="8" step="1" value="6"></label>
+      <label>Noise seed <output id="o-seed"></output><input type="range" id="seed" min="1" max="50" step="1" value="3"></label>
+      <button class="btn primary" id="run">Run simulation</button>
+      <p class="note">Carrier 10 GHz, sample rate 20 MHz, PRI 100 µs. Everything recomputes as you move a control.</p>
+    </aside>
+
+    <main>
+      <div class="stats" id="stats"></div>
+      <div class="plots">
+        <div class="plot">
+          <h3>Transmitted LFM pulse</h3>
+          <p>Real part and instantaneous frequency, a linear sweep from −B/2 to +B/2.</p>
+          <div class="legend"><span><i style="background:var(--s1)"></i>Re{s(t)}</span><span><i style="background:var(--s2)"></i>Inst. frequency (scaled)</span></div>
+          <canvas id="c-chirp"></canvas>
+        </div>
+        <div class="plot">
+          <h3>Pulse compression (one pulse)</h3>
+          <p>The raw echo is buried in noise. The matched filter concentrates each 10 µs echo into a 1/B-wide peak.</p>
+          <div class="legend"><span><i style="background:var(--s2)"></i>Raw echo</span><span><i style="background:var(--s1)"></i>Compressed</span><span><i style="background:var(--truth)"></i>True ranges</span></div>
+          <canvas id="c-pc"></canvas>
+        </div>
+        <div class="plot full">
+          <h3>Range–Doppler map with CFAR detections</h3>
+          <p>Power in dB above the noise floor. <b>○</b> CFAR detection, <b style="color:var(--truth)">×</b> true target.</p>
+          <canvas id="c-rd"></canvas>
+        </div>
+        <div class="plot full">
+          <h3>Detections vs truth</h3>
+          <div style="overflow-x:auto"><table id="dets"></table></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <footer>C++17 core with unit tests · MATLAB reference script · JavaScript port for this demo</footer>
+</div>
+
+<script src="plot.js"></script>
+<script src="radar.js"></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+let targets = [
+  { range: 2500, velocity: -30, rcs: 2, model: 1 },
+  { range: 6000, velocity: 12, rcs: 10, model: 0 },
+  { range: 9000, velocity: 45, rcs: 20, model: 3 },
+];
+
+function renderTargets() {
+  $("targets").innerHTML = "";
+  targets.forEach((t, i) => {
+    const row = document.createElement("div");
+    row.className = "tg";
+    row.innerHTML = `
+      <input type="number" value="${t.range}" step="100" min="300" max="13000" aria-label="Range">
+      <input type="number" value="${t.velocity}" step="1" min="-74" max="74" aria-label="Velocity">
+      <input type="number" value="${t.rcs}" step="0.5" min="0.1" max="100" aria-label="RCS">
+      <select aria-label="Swerling model">${[0, 1, 2, 3, 4].map((m) => `<option ${m === t.model ? "selected" : ""}>${m}</option>`).join("")}</select>
+      <button aria-label="Remove target">×</button>`;
+    const [r, v, s, m] = row.querySelectorAll("input, select");
+    const upd = () => { t.range = +r.value; t.velocity = +v.value; t.rcs = +s.value; t.model = +m.value; run(); };
+    [r, v, s, m].forEach((el) => el.addEventListener("change", upd));
+    row.querySelector("button").onclick = () => { targets.splice(i, 1); renderTargets(); run(); };
+    $("targets").appendChild(row);
+  });
+}
+
+function params() {
+  return {
+    fc: 10e9, fs: 20e6, pri: 100e-6, refRange: 5000,
+    B: +$("bw").value * 1e6,
+    T: +$("pw").value * 1e-6,
+    np: 2 ** +$("np").value,
+    refSnrDb: +$("snr").value,
+  };
+}
+
+function syncLabels() {
+  const p = params();
+  $("o-bw").textContent = `${p.B / 1e6} MHz`;
+  $("o-pw").textContent = `${Math.round(p.T * 1e6)} µs`;
+  $("o-np").textContent = p.np;
+  $("o-snr").textContent = `${p.refSnrDb} dB`;
+  $("o-pfa").textContent = `1e-${$("pfa").value}`;
+  $("o-seed").textContent = $("seed").value;
+}
+
+function run() {
+  syncLabels();
+  const p = params(), d = Radar.derived(p), css = Plot.css;
+  const rx = Radar.simulate(p, targets, +$("seed").value);
+  const pc = Radar.pulseCompress(p, rx);
+  const rd = Radar.rangeDoppler(pc);
+  const { dets, alpha } = Radar.cfar2d(p, rd, { gr: 2, gd: 1, tr: 8, td: 4, pfa: 10 ** -+$("pfa").value });
+
+  const gain = 10 * Math.log10(d.nPulse * p.np);
+  $("stats").innerHTML = [
+    [`${d.rangeRes.toFixed(1)} m`, "range resolution c/2B"],
+    [`${d.vRes.toFixed(2)} m/s`, "velocity resolution"],
+    [`${(d.maxRange / 1e3).toFixed(1)} km`, "max unambiguous range"],
+    [`±${d.vMax.toFixed(1)} m/s`, "max unambiguous velocity"],
+    [`${gain.toFixed(1)} dB`, "coherent gain (BT × pulses)"],
+    [`${(10 * Math.log10(alpha)).toFixed(1)} dB`, "CFAR threshold factor"],
+  ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
+
+  // 1. Chirp
+  const ref = Radar.lfmPulse(p), n = ref.re.length;
+  const tus = Array.from({ length: n }, (_, i) => (i / p.fs - p.T / 2) * 1e6);
+  const inst = tus.map((t) => ((p.B / p.T) * t * 1e-6) / (p.B / 2));  // normalised to ±1
+  Plot.line($("c-chirp"), [
+    { x: tus, y: Array.from(ref.re), color: css("--s1"), width: 1.2 },
+    { x: tus, y: inst, color: css("--s2"), width: 2 },
+  ], { xlabel: "time (µs)", ylabel: "amplitude", ylim: [-1.2, 1.2] });
+
+  // 2. Pulse compression on pulse 0 (dB, normalised to noise)
+  const rangeKm = Array.from({ length: d.ns }, (_, i) => (i * Radar.C) / (2 * p.fs) / 1e3);
+  const nfftRef = Radar.nextPow2(d.ns + d.nPulse);
+  const noiseGain = 10 * Math.log10(d.nPulse * 0.397);  // Hamming-weighted reference noise gain
+  const raw = Array.from(rx[0].re, (re, i) => 10 * Math.log10(re * re + rx[0].im[i] ** 2 + 1e-12));
+  const cmp = Array.from(pc[0].re, (re, i) => 10 * Math.log10(re * re + pc[0].im[i] ** 2 + 1e-12) - noiseGain);
+  const pcPlot = Plot.line($("c-pc"), [
+    { x: rangeKm, y: raw, color: css("--s2"), width: 1 },
+    { x: rangeKm, y: cmp, color: css("--s1"), width: 1.2 },
+  ], { xlabel: "range (km)", ylabel: "dB re noise", ylim: [-30, Math.max(40, Math.max(...cmp) + 5)] });
+  const ctx = $("c-pc").getContext("2d");
+  ctx.strokeStyle = css("--truth"); ctx.setLineDash([4, 4]);
+  for (const t of targets) {
+    const x = pcPlot.box.l + ((t.range / 1e3 - pcPlot.x0) / (pcPlot.x1 - pcPlot.x0)) * pcPlot.box.w;
+    ctx.beginPath(); ctx.moveTo(x, pcPlot.box.t); ctx.lineTo(x, pcPlot.box.t + pcPlot.box.h); ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // 3. Range-Doppler map (max-pooled to screen width), dB above median noise
+  const nd = rd.length, cols = Math.min(700, d.ns), pool = Math.ceil(d.ns / cols);
+  const all = [];
+  for (let k = 0; k < nd; k += 4) for (let r = 0; r < d.ns; r += 7) all.push(rd[k][r]);
+  all.sort((a, b) => a - b);
+  const floor = all[Math.floor(all.length / 2)] / Math.LN2;  // median of exponential -> mean
+  const z = rd.map((row) => {
+    const out = new Float64Array(cols);
+    for (let c = 0; c < cols; c++) {
+      let m = 0;
+      for (let r = c * pool; r < Math.min(d.ns, (c + 1) * pool); r++) m = Math.max(m, row[r]);
+      out[c] = 10 * Math.log10(m / floor + 1e-12);
+    }
+    return out;
+  });
+  const vMin = (-nd / 2) * d.vRes * (p.np / nd), vMax = (nd / 2 - 1) * d.vRes * (p.np / nd);
+  const maxKm = (d.ns * Radar.C) / (2 * p.fs) / 1e3;
+  let zPeak = 0;
+  for (const row of z) for (const v of row) zPeak = Math.max(zPeak, v);
+  const hm = Plot.heatmap($("c-rd"), z, { zmin: 0, zmax: Math.max(25, zPeak), x0: 0, x1: maxKm, y0: vMin, y1: vMax, xlabel: "range (km)", ylabel: "velocity (m/s)" });
+  const toXY = (rKm, v) => [hm.box.l + (rKm / maxKm) * hm.box.w, hm.box.t + hm.box.h - ((v - vMin) / (vMax - vMin)) * hm.box.h];
+  hm.ctx.lineWidth = 2;
+  hm.ctx.strokeStyle = "#fff";
+  for (const det of dets) { const [x, y] = toXY(det.range / 1e3, det.velocity); hm.ctx.beginPath(); hm.ctx.arc(x, y, 7, 0, 2 * Math.PI); hm.ctx.stroke(); }
+  hm.ctx.strokeStyle = css("--truth");
+  for (const t of targets) {
+    const [x, y] = toXY(t.range / 1e3, t.velocity);
+    hm.ctx.beginPath(); hm.ctx.moveTo(x - 4, y - 4); hm.ctx.lineTo(x + 4, y + 4); hm.ctx.moveTo(x + 4, y - 4); hm.ctx.lineTo(x - 4, y + 4); hm.ctx.stroke();
+  }
+
+  // 4. Table: match detections to truth
+  const used = new Set();
+  const rowsT = targets.map((t, i) => {
+    let best = -1;
+    dets.forEach((det, j) => {
+      if (used.has(j)) return;
+      if (Math.abs(det.range - t.range) < 2 * d.rangeRes && Math.abs(det.velocity - t.velocity) < 2 * d.vRes && (best < 0 || det.snrDb > dets[best].snrDb)) best = j;
+    });
+    if (best >= 0) used.add(best);
+    const det = dets[best];
+    return `<tr><td>Target ${i + 1}</td><td>${t.range.toFixed(0)} m</td><td>${t.velocity.toFixed(1)} m/s</td>
+      <td>${det ? det.range.toFixed(1) + " m" : "—"}</td><td>${det ? det.velocity.toFixed(2) + " m/s" : "—"}</td>
+      <td>${det ? det.snrDb.toFixed(1) + " dB" : "—"}</td><td class="${det ? "ok" : ""}">${det ? "detected" : "missed"}</td></tr>`;
+  });
+  const fas = dets.filter((_, j) => !used.has(j)).map((det) => `<tr class="fa"><td>False alarm</td><td>—</td><td>—</td>
+      <td>${det.range.toFixed(1)} m</td><td>${det.velocity.toFixed(2)} m/s</td><td>${det.snrDb.toFixed(1)} dB</td><td>noise</td></tr>`);
+  $("dets").innerHTML = `<tr><th></th><th>True range</th><th>True velocity</th><th>Est. range</th><th>Est. velocity</th><th>SNR vs local noise</th><th></th></tr>` + rowsT.join("") + fas.join("");
+}
+
+["bw", "pw", "np", "snr", "pfa", "seed"].forEach((id) => $(id).addEventListener("input", run));
+$("run").onclick = run;
+$("add").onclick = () => { targets.push({ range: 4000, velocity: 0, rcs: 5, model: 0 }); renderTargets(); run(); };
+window.addEventListener("resize", () => { clearTimeout(window._rt); window._rt = setTimeout(run, 150); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", run);
+renderTargets();
+run();
+</script>
+</body>
+</html>
