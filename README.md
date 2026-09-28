@@ -1,9 +1,16 @@
 # Radar Signal Processing Simulator
 
+[![Build and test](https://github.com/S-Harshni/Radar-Signal-Processing-Simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/S-Harshni/Radar-Signal-Processing-Simulator/actions/workflows/ci.yml)
+![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C?logo=cplusplus&logoColor=white)
+![MATLAB](https://img.shields.io/badge/MATLAB-R2016b%2B-e16737)
+[![Live demo](https://img.shields.io/badge/demo-live-22c55e)](https://s-harshni.github.io/Radar-Signal-Processing-Simulator/)
+
 <!-- live-links -->
 > 🔗 **Live demo:** [s-harshni.github.io/Radar-Signal-Processing-Simulator](https://s-harshni.github.io/Radar-Signal-Processing-Simulator/)  
 > 👤 **Portfolio:** [s-harshni.github.io/S-Harshni](https://s-harshni.github.io/S-Harshni/)  
 <!-- live-links -->
+
+![Interactive radar simulator](docs/screenshots/demo-overview.png)
 
 A pulse-Doppler radar signal-processing chain implemented three times: a tested **C++17** library, a **MATLAB** reference script, and a **JavaScript** port that powers the interactive browser demo.
 
@@ -27,6 +34,14 @@ LFM chirp ─► target echoes ─► pulse compression ─► Doppler FFT ─�
 
 Default radar: 10 GHz carrier, B = 10 MHz, T = 10 µs, fs = 20 MHz, PRI = 100 µs, 64 pulses →
 range resolution **15 m**, max range **13.5 km**, velocity resolution **2.34 m/s**, unambiguous velocity **±74.9 m/s**, coherent gain **41 dB**.
+
+## Screenshots
+
+| Pulse compression | Range–Doppler map + CFAR |
+|---|---|
+| ![Pulse compression of a single pulse](docs/screenshots/pulse-compression.png) | ![Range-Doppler map with CFAR detections](docs/screenshots/range-doppler.png) |
+
+The raw echoes (red) sit at the noise floor. After matched filtering (blue), each 10 µs echo collapses to a 1/B-wide peak at the true range. On the range–Doppler map, the CFAR detections (○) land on the true targets (×).
 
 ## Build & test (C++)
 
